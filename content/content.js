@@ -6,7 +6,7 @@
 
 (function () {
   // Max text length to avoid performance issues on huge pages
-  const MAX_TEXT_LENGTH = 500000;
+  var MAX_TEXT_LENGTH = 500000;
 
   /**
    * Convert a potentially relative URL to absolute.
@@ -26,26 +26,22 @@
    * Extract all unique image URLs including lazy-loaded images.
    */
   function extractImages() {
-    const urls = new Set();
-    const imgs = document.querySelectorAll('img');
+    var urls = new Set();
+    var imgs = document.querySelectorAll('img');
 
     imgs.forEach(function (img) {
-      // Standard src
       var src = img.getAttribute('src');
       var abs = toAbsoluteURL(src);
       if (abs) urls.add(abs);
 
-      // Lazy-load: data-src
       var dataSrc = img.getAttribute('data-src');
       abs = toAbsoluteURL(dataSrc);
       if (abs) urls.add(abs);
 
-      // Lazy-load: data-lazy-src
       var dataLazy = img.getAttribute('data-lazy-src');
       abs = toAbsoluteURL(dataLazy);
       if (abs) urls.add(abs);
 
-      // srcset — pick the largest available
       var srcset = img.getAttribute('srcset') || img.getAttribute('data-srcset');
       if (srcset) {
         srcset.split(',').forEach(function (entry) {
@@ -58,7 +54,6 @@
       }
     });
 
-    // Also check <source> inside <picture>
     document.querySelectorAll('picture source').forEach(function (source) {
       var srcset = source.getAttribute('srcset');
       if (srcset) {
@@ -72,7 +67,6 @@
       }
     });
 
-    // CSS background images on common containers
     document.querySelectorAll('[style*="background"]').forEach(function (el) {
       var style = el.getAttribute('style') || '';
       var match = style.match(/url\(["']?([^"')]+)["']?\)/);
@@ -101,12 +95,10 @@
    * Extract main text content, preferring semantic containers.
    */
   function extractText() {
-    // Try semantic content containers first
     var containers = document.querySelectorAll('article, main, [role="main"]');
     var root;
 
     if (containers.length > 0) {
-      // Use the largest semantic container
       var maxLen = 0;
       containers.forEach(function (c) {
         var len = (c.textContent || '').length;
@@ -121,24 +113,72 @@
       root = document.body;
     }
 
-    // Clone to avoid mutating the live DOM
     var clone = root.cloneNode(true);
 
-    // Remove unwanted elements
     var removeTags = ['script', 'style', 'noscript', 'svg', 'nav', 'footer', 'header', 'aside', 'iframe', 'form', 'button', 'input', 'select', 'textarea'];
     removeTags.forEach(function (tag) {
       clone.querySelectorAll(tag).forEach(function (el) { el.remove(); });
     });
 
-    // Get text and clean whitespace
     var text = (clone.textContent || '').replace(/[ \t]+/g, ' ').replace(/\n\s*\n/g, '\n').trim();
 
-    // Truncate if too large
     if (text.length > MAX_TEXT_LENGTH) {
       text = text.substring(0, MAX_TEXT_LENGTH) + '\n\n[Truncated: content exceeded ' + MAX_TEXT_LENGTH + ' characters]';
     }
 
     return text;
+  }
+
+  /**
+   * Extract meta tags — OG, Twitter, description, keywords, favicon.
+   */
+  function extractMeta() {
+    var meta = {};
+
+    // Standard meta tags
+    var descEl = document.querySelector('meta[name="description"]');
+    if (descEl) meta.description = descEl.getAttribute('content') || '';
+
+    var keywordsEl = document.querySelector('meta[name="keywords"]');
+    if (keywordsEl) meta.keywords = keywordsEl.getAttribute('content') || '';
+
+    var authorEl = document.querySelector('meta[name="author"]');
+    if (authorEl) meta.author = authorEl.getAttribute('content') || '';
+
+    // Open Graph tags
+    var ogTags = {};
+    document.querySelectorAll('meta[property^="og:"]').forEach(function (el) {
+      var prop = el.getAttribute('property').replace('og:', '');
+      ogTags[prop] = el.getAttribute('content') || '';
+    });
+    if (Object.keys(ogTags).length > 0) meta.og = ogTags;
+
+    // Twitter Card tags
+    var twitterTags = {};
+    document.querySelectorAll('meta[name^="twitter:"]').forEach(function (el) {
+      var name = el.getAttribute('name').replace('twitter:', '');
+      twitterTags[name] = el.getAttribute('content') || '';
+    });
+    if (Object.keys(twitterTags).length > 0) meta.twitter = twitterTags;
+
+    // Favicon
+    var favicon = document.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
+    if (favicon) {
+      var href = toAbsoluteURL(favicon.getAttribute('href'));
+      if (href) meta.favicon = href;
+    }
+
+    // Canonical URL
+    var canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) {
+      meta.canonical = canonical.getAttribute('href') || '';
+    }
+
+    // Language
+    var lang = document.documentElement.getAttribute('lang');
+    if (lang) meta.language = lang;
+
+    return meta;
   }
 
   // ── Execute and return results ──
@@ -147,9 +187,10 @@
     title: document.title || '',
     images: extractImages(),
     links: extractLinks(),
-    text: extractText()
+    text: extractText(),
+    meta: extractMeta(),
+    scrapedAt: new Date().toISOString()
   };
 
-  // Return the result (used by chrome.scripting.executeScript)
   return result;
 })();
