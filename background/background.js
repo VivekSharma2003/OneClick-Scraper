@@ -58,6 +58,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true;
   }
+
+  if (message.action === 'screenshot') {
+    handleScreenshot().then(() => {
+      sendResponse({ success: true });
+    }).catch(err => {
+      sendResponse({ error: err.message || 'Screenshot failed.' });
+    });
+    return true;
+  }
 });
 
 // ── Scrape ──
@@ -131,30 +140,36 @@ async function handleDownloadZIP(data) {
 // ── Download CSV ──
 
 function handleDownloadCSV(data, csvType) {
-  var csv = '';
-  var filename = '';
-
+  var csv = '', filename = '', base = sanitizeFilename(data.title || 'scraped-data');
   if (csvType === 'images') {
     csv = 'Index,Image URL\n';
-    data.images.forEach(function (url, i) {
-      csv += (i + 1) + ',"' + url.replace(/"/g, '""') + '"\n';
-    });
-    filename = sanitizeFilename(data.title || 'scraped-data') + '_images.csv';
+    data.images.forEach(function(u,i) { csv += (i+1)+',"'+u.replace(/"/g,'""')+'"\n'; });
+    filename = base + '_images.csv';
   } else if (csvType === 'links') {
     csv = 'Index,Link URL\n';
-    data.links.forEach(function (url, i) {
-      csv += (i + 1) + ',"' + url.replace(/"/g, '""') + '"\n';
-    });
-    filename = sanitizeFilename(data.title || 'scraped-data') + '_links.csv';
+    data.links.forEach(function(u,i) { csv += (i+1)+',"'+u.replace(/"/g,'""')+'"\n'; });
+    filename = base + '_links.csv';
+  } else if (csvType === 'emails') {
+    csv = 'Index,Email\n';
+    (data.emails||[]).forEach(function(e,i) { csv += (i+1)+',"'+e.replace(/"/g,'""')+'"\n'; });
+    filename = base + '_emails.csv';
+  } else if (csvType === 'phones') {
+    csv = 'Index,Phone\n';
+    (data.phones||[]).forEach(function(p,i) { csv += (i+1)+',"'+p.replace(/"/g,'""')+'"\n'; });
+    filename = base + '_phones.csv';
   }
+  chrome.downloads.download({ url: 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv), filename: filename, saveAs: true });
+}
 
-  var dataUrl = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+// ── Screenshot ──
 
-  chrome.downloads.download({
-    url: dataUrl,
-    filename: filename,
-    saveAs: true
-  });
+async function handleScreenshot() {
+  var tabs = await chrome.tabs.query({active:true,currentWindow:true});
+  var tab = tabs[0];
+  if (!tab) throw new Error('No active tab.');
+  var dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {format:'png'});
+  var filename = 'screenshot_' + Date.now() + '.png';
+  chrome.downloads.download({ url: dataUrl, filename: filename, saveAs: true });
 }
 
 // ── Scrape History ──
