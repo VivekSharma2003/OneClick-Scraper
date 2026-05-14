@@ -187,14 +187,198 @@
   function computeReadingStats(text) {
     var words = text.split(/\s+/).filter(function (w) { return w.length > 0; });
     var wordCount = words.length;
-    var readingTimeMin = Math.max(1, Math.ceil(wordCount / 230)); // ~230 WPM average
+    var readingTimeMin = Math.max(1, Math.ceil(wordCount / 230));
     return { wordCount: wordCount, readingTimeMin: readingTimeMin };
+  }
+
+  /** Detect technologies/frameworks used on the page */
+  function detectTechnologies() {
+    var techs = [];
+    // React
+    if (document.querySelector('[data-reactroot], [data-reactid]') || window.__REACT_DEVTOOLS_GLOBAL_HOOK__ || document.querySelector('#__next')) techs.push('React');
+    // Next.js
+    if (document.querySelector('#__next') || document.querySelector('script[src*="_next"]')) techs.push('Next.js');
+    // Vue
+    if (document.querySelector('[data-v-]') || window.__VUE__ || document.querySelector('[id="app"].__vue__')) techs.push('Vue.js');
+    // Nuxt
+    if (document.querySelector('#__nuxt') || window.__NUXT__) techs.push('Nuxt');
+    // Angular
+    if (document.querySelector('[ng-version], [_nghost], [_ngcontent]') || window.ng) techs.push('Angular');
+    // jQuery
+    if (window.jQuery || window.$) techs.push('jQuery');
+    // WordPress
+    if (document.querySelector('meta[name="generator"][content*="WordPress"], link[href*="wp-content"], link[href*="wp-includes"]')) techs.push('WordPress');
+    // Shopify
+    if (window.Shopify || document.querySelector('meta[name="shopify-checkout-api-token"], link[href*="cdn.shopify"]')) techs.push('Shopify');
+    // Bootstrap
+    if (document.querySelector('link[href*="bootstrap"], .container-fluid, .navbar-toggler')) techs.push('Bootstrap');
+    // Tailwind
+    if (document.querySelector('[class*="flex"][class*="items-"], [class*="bg-"][class*="text-"]')) techs.push('Tailwind CSS');
+    // Google Analytics
+    if (window.ga || window.gtag || document.querySelector('script[src*="google-analytics"], script[src*="googletagmanager"]')) techs.push('Google Analytics');
+    // Google Tag Manager
+    if (window.google_tag_manager || document.querySelector('script[src*="gtm.js"]')) techs.push('GTM');
+    // TypeScript (compiled indicators)
+    if (document.querySelector('script[src*=".ts"], script[src*="tslib"]')) techs.push('TypeScript');
+    // Webpack
+    if (window.webpackJsonp || window.webpackChunk || document.querySelector('script[src*="webpack"]')) techs.push('Webpack');
+    // Vite
+    if (document.querySelector('script[type="module"][src*="/@vite"], script[src*="vite"]')) techs.push('Vite');
+    // Gatsby
+    if (document.querySelector('#___gatsby')) techs.push('Gatsby');
+    // Svelte
+    if (document.querySelector('[class*="svelte-"]')) techs.push('Svelte');
+    // Font Awesome
+    if (document.querySelector('link[href*="font-awesome"], link[href*="fontawesome"], .fa, .fas, .fab')) techs.push('Font Awesome');
+    // Cloudflare
+    if (document.querySelector('script[src*="cloudflare"], link[href*="cdnjs.cloudflare"]')) techs.push('Cloudflare');
+    return techs;
+  }
+
+  /** Extract video and audio sources */
+  function extractMedia() {
+    var videos = new Set();
+    var audios = new Set();
+    // <video> tags
+    document.querySelectorAll('video').forEach(function(v) {
+      var src = v.getAttribute('src');
+      if (src) { var abs = toAbsoluteURL(src); if (abs) videos.add(abs); }
+      v.querySelectorAll('source').forEach(function(s) {
+        var ss = s.getAttribute('src');
+        if (ss) { var abs = toAbsoluteURL(ss); if (abs) videos.add(abs); }
+      });
+    });
+    // <audio> tags
+    document.querySelectorAll('audio').forEach(function(a) {
+      var src = a.getAttribute('src');
+      if (src) { var abs = toAbsoluteURL(src); if (abs) audios.add(abs); }
+      a.querySelectorAll('source').forEach(function(s) {
+        var ss = s.getAttribute('src');
+        if (ss) { var abs = toAbsoluteURL(ss); if (abs) audios.add(abs); }
+      });
+    });
+    // <iframe> embeds (YouTube, Vimeo)
+    document.querySelectorAll('iframe[src]').forEach(function(f) {
+      var src = f.getAttribute('src') || '';
+      if (/youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com/.test(src)) {
+        var abs = toAbsoluteURL(src);
+        if (abs) videos.add(abs);
+      }
+    });
+    return { videos: Array.from(videos).slice(0, 30), audios: Array.from(audios).slice(0, 20) };
+  }
+
+  /** Detect font families used on the page */
+  function extractFonts() {
+    var fonts = new Set();
+    // Check stylesheets for @font-face
+    try {
+      for (var i = 0; i < document.styleSheets.length; i++) {
+        try {
+          var rules = document.styleSheets[i].cssRules || [];
+          for (var j = 0; j < rules.length; j++) {
+            if (rules[j].type === CSSRule.FONT_FACE_RULE) {
+              var family = rules[j].style.getPropertyValue('font-family').replace(/['"]/g, '').trim();
+              if (family) fonts.add(family);
+            }
+          }
+        } catch(e) { /* cross-origin stylesheets */ }
+      }
+    } catch(e) {}
+    // Sample computed fonts from visible elements
+    var sampleEls = document.querySelectorAll('body, h1, h2, h3, p, a, span, div, li, td, th, button, input');
+    var checked = 0;
+    sampleEls.forEach(function(el) {
+      if (checked > 50) return;
+      checked++;
+      var cs = window.getComputedStyle(el);
+      var ff = cs.fontFamily;
+      if (ff) {
+        ff.split(',').forEach(function(f) {
+          var clean = f.replace(/['"]/g, '').trim();
+          if (clean && !/^(serif|sans-serif|monospace|cursive|fantasy|system-ui|inherit|initial|unset|-apple-system|BlinkMacSystemFont)$/i.test(clean)) {
+            fonts.add(clean);
+          }
+        });
+      }
+    });
+    return Array.from(fonts).slice(0, 20);
+  }
+
+  /** Extract HTML tables as structured data */
+  function extractTables() {
+    var tables = [];
+    document.querySelectorAll('table').forEach(function(table, idx) {
+      if (idx >= 10) return; // Max 10 tables
+      var headers = [];
+      var rows = [];
+      // Extract headers
+      table.querySelectorAll('thead th, thead td, tr:first-child th').forEach(function(th) {
+        headers.push((th.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 100));
+      });
+      // Extract rows
+      var trs = table.querySelectorAll('tbody tr, tr');
+      var startIdx = headers.length > 0 ? 0 : 0;
+      trs.forEach(function(tr, ri) {
+        if (ri >= 50) return; // Max 50 rows per table
+        // Skip header row if it was already captured
+        if (ri === 0 && tr.querySelectorAll('th').length > 0 && headers.length > 0) return;
+        var cells = [];
+        tr.querySelectorAll('td, th').forEach(function(td) {
+          cells.push((td.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 200));
+        });
+        if (cells.length > 0) rows.push(cells);
+      });
+      if (rows.length > 0 || headers.length > 0) {
+        tables.push({ headers: headers, rows: rows, rowCount: rows.length });
+      }
+    });
+    return tables;
+  }
+
+  /** Extract CSS color palette from custom properties */
+  function extractColors() {
+    var colors = new Set();
+    var colorRegex = /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]+\)|hsla?\([^)]+\)/g;
+    // Scan CSS custom properties on :root
+    try {
+      var rootStyles = window.getComputedStyle(document.documentElement);
+      var allProps = [];
+      for (var i = 0; i < document.styleSheets.length; i++) {
+        try {
+          var rules = document.styleSheets[i].cssRules || [];
+          for (var j = 0; j < rules.length; j++) {
+            if (rules[j].selectorText === ':root' || rules[j].selectorText === 'html') {
+              var text = rules[j].cssText;
+              var matches = text.match(colorRegex);
+              if (matches) matches.forEach(function(c) { colors.add(c); });
+            }
+          }
+        } catch(e) {}
+      }
+    } catch(e) {}
+    // Sample background-color and color from key elements
+    var sampleEls = document.querySelectorAll('body, header, footer, nav, main, .hero, .banner, button, a');
+    var checked = 0;
+    sampleEls.forEach(function(el) {
+      if (checked > 30) return;
+      checked++;
+      var cs = window.getComputedStyle(el);
+      ['color', 'backgroundColor', 'borderColor'].forEach(function(prop) {
+        var val = cs[prop];
+        if (val && val !== 'rgba(0, 0, 0, 0)' && val !== 'transparent') {
+          colors.add(val);
+        }
+      });
+    });
+    return Array.from(colors).slice(0, 24);
   }
 
   // ── Execute and return results ──
   var text = extractText();
   var links = extractLinks();
   var readingStats = computeReadingStats(text);
+  var media = extractMedia();
 
   var result = {
     url: window.location.href,
@@ -209,8 +393,15 @@
     socialLinks: extractSocialLinks(links),
     wordCount: readingStats.wordCount,
     readingTimeMin: readingStats.readingTimeMin,
+    technologies: detectTechnologies(),
+    videos: media.videos,
+    audios: media.audios,
+    fonts: extractFonts(),
+    tables: extractTables(),
+    colors: extractColors(),
     scrapedAt: new Date().toISOString()
   };
 
   return result;
 })();
+
