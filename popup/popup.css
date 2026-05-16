@@ -132,6 +132,50 @@ body{width:380px;max-height:580px;font-family:'Inter',system-ui,sans-serif;backg
 .heading-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .heading-row.more{justify-content:center;color:var(--text-muted);font-weight:600;font-size:10px}
 
+/* Technologies */
+.tech-section{animation:slideUp .4s cubic-bezier(.16,1,.3,1)}
+.tech-section.hidden{display:none}
+.tech-chips{display:flex;flex-wrap:wrap;gap:5px}
+.tech-chip{display:inline-flex;align-items:center;padding:4px 10px;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:6px;font-size:10px;font-weight:700;color:var(--white-70);letter-spacing:.3px;transition:all var(--transition);cursor:default}
+.tech-chip:hover{background:var(--glass-bg-hover);border-color:var(--glass-border-hover);color:var(--white);transform:translateY(-1px)}
+
+/* Media */
+.media-section{animation:slideUp .4s cubic-bezier(.16,1,.3,1)}
+.media-section.hidden{display:none}
+.media-list{display:flex;flex-direction:column;gap:4px}
+.media-row{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:6px;font-size:10px;color:var(--text-secondary);cursor:pointer;overflow:hidden;transition:all var(--transition)}
+.media-row:hover{background:var(--glass-bg-hover);border-color:var(--glass-border-hover);color:var(--white)}
+.media-type-badge{flex-shrink:0;font-size:8px;font-weight:800;padding:2px 6px;border-radius:4px;letter-spacing:.5px;text-transform:uppercase}
+.media-type-badge.video{background:rgba(255,255,255,.12);color:var(--white-90)}
+.media-type-badge.audio{background:rgba(255,255,255,.08);color:var(--white-70)}
+.media-url{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+
+/* Fonts */
+.fonts-section{animation:slideUp .4s cubic-bezier(.16,1,.3,1)}
+.fonts-section.hidden{display:none}
+.font-chips{display:flex;flex-wrap:wrap;gap:5px}
+.font-chip{display:inline-flex;align-items:center;padding:5px 10px;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:6px;font-size:11px;font-weight:500;color:var(--white-70);cursor:pointer;transition:all var(--transition);letter-spacing:.2px}
+.font-chip:hover{background:var(--glass-bg-hover);border-color:var(--glass-border-hover);color:var(--white);transform:translateY(-1px)}
+
+/* Color Palette */
+.colors-section{animation:slideUp .4s cubic-bezier(.16,1,.3,1)}
+.colors-section.hidden{display:none}
+.color-swatches{display:flex;flex-wrap:wrap;gap:6px}
+.color-swatch{width:28px;height:28px;border-radius:8px;border:2px solid var(--glass-border);cursor:pointer;transition:all var(--transition);position:relative}
+.color-swatch:hover{transform:scale(1.2);border-color:var(--white-50);box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.color-swatch:active{transform:scale(1.05)}
+
+/* Tables */
+.tables-section{animation:slideUp .4s cubic-bezier(.16,1,.3,1)}
+.tables-section.hidden{display:none}
+.tables-list{display:flex;flex-direction:column;gap:6px}
+.table-card{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:8px;overflow:hidden;transition:all var(--transition)}
+.table-card:hover{border-color:var(--glass-border-hover)}
+.table-card-header{padding:8px 10px;font-size:11px;font-weight:700;color:var(--white-90);border-bottom:1px solid var(--glass-border);background:rgba(255,255,255,.03)}
+.table-card-cols{padding:6px 10px;font-size:10px;font-weight:600;color:var(--white-70);border-bottom:1px solid var(--glass-border);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.table-card-row{padding:4px 10px;font-size:10px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.table-card-more{padding:4px 10px 6px;font-size:9px;color:var(--text-muted);font-weight:600;text-align:center}
+
 /* Error */
 .error-message{display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--status-error);background:rgba(255,68,68,.06);border:1px solid rgba(255,68,68,.15);border-radius:var(--radius-sm);padding:12px 14px;line-height:1.5;animation:shake .4s ease}
 .error-message.hidden{display:none}
