@@ -67,6 +67,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true;
   }
+
+  if (message.action === 'downloadMarkdown') {
+    handleDownloadMarkdown(message.data);
+    sendResponse({ success: true });
+    return false;
+  }
 });
 
 // ── Scrape ──
@@ -169,6 +175,62 @@ async function handleScreenshot() {
   if (!tab) throw new Error('No active tab.');
   var dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {format:'png'});
   var filename = 'screenshot_' + Date.now() + '.png';
+  chrome.downloads.download({ url: dataUrl, filename: filename, saveAs: true });
+}
+
+// ── Download Markdown ──
+
+function handleDownloadMarkdown(data) {
+  var md = '# ' + (data.title || 'Untitled Page') + '\n\n';
+  md += '**URL:** ' + data.url + '  \n';
+  md += '**Scraped:** ' + data.scrapedAt + '  \n';
+  md += '**Words:** ' + (data.wordCount || 0) + ' | **Reading Time:** ~' + (data.readingTimeMin || 1) + ' min\n\n';
+  md += '---\n\n';
+  if (data.technologies && data.technologies.length > 0) {
+    md += '## Technologies\n\n' + data.technologies.map(function(t) { return '`' + t + '`'; }).join(' ') + '\n\n';
+  }
+  if (data.meta) {
+    md += '## Meta Tags\n\n';
+    if (data.meta.description) md += '- **Description:** ' + data.meta.description + '\n';
+    if (data.meta.keywords) md += '- **Keywords:** ' + data.meta.keywords + '\n';
+    if (data.meta.author) md += '- **Author:** ' + data.meta.author + '\n';
+    if (data.meta.canonical) md += '- **Canonical:** ' + data.meta.canonical + '\n';
+    md += '\n';
+  }
+  if (data.headings && data.headings.length > 0) {
+    md += '## Headings Structure\n\n';
+    data.headings.forEach(function(h) { md += '  '.repeat(h.level - 1) + '- **H' + h.level + ':** ' + h.text + '\n'; });
+    md += '\n';
+  }
+  if (data.images && data.images.length > 0) {
+    md += '## Images (' + data.images.length + ')\n\n';
+    data.images.forEach(function(u, i) { md += (i + 1) + '. ' + u + '\n'; });
+    md += '\n';
+  }
+  if (data.links && data.links.length > 0) {
+    md += '## Links (' + data.links.length + ')\n\n';
+    data.links.forEach(function(u, i) { md += (i + 1) + '. ' + u + '\n'; });
+    md += '\n';
+  }
+  if (data.emails && data.emails.length > 0) {
+    md += '## Emails\n\n';
+    data.emails.forEach(function(e) { md += '- ' + e + '\n'; });
+    md += '\n';
+  }
+  if (data.phones && data.phones.length > 0) {
+    md += '## Phone Numbers\n\n';
+    data.phones.forEach(function(p) { md += '- ' + p + '\n'; });
+    md += '\n';
+  }
+  if (data.fonts && data.fonts.length > 0) {
+    md += '## Fonts\n\n' + data.fonts.map(function(f) { return '`' + f + '`'; }).join(' ') + '\n\n';
+  }
+  if (data.text) {
+    md += '## Content\n\n' + data.text.substring(0, 10000) + '\n';
+  }
+
+  var dataUrl = 'data:text/markdown;charset=utf-8,' + encodeURIComponent(md);
+  var filename = sanitizeFilename(data.title || 'scraped-data') + '.md';
   chrome.downloads.download({ url: dataUrl, filename: filename, saveAs: true });
 }
 
