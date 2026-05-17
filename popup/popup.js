@@ -1,5 +1,6 @@
 'use strict';
 
+// ── DOM References ──
 var btnScrape = document.getElementById('btnScrape');
 var btnJSON = document.getElementById('btnJSON');
 var btnZIP = document.getElementById('btnZIP');
@@ -7,7 +8,7 @@ var btnCopy = document.getElementById('btnCopy');
 var btnCSVImages = document.getElementById('btnCSVImages');
 var btnCSVLinks = document.getElementById('btnCSVLinks');
 var btnCSVEmails = document.getElementById('btnCSVEmails');
-var btnCSVPhones = document.getElementById('btnCSVPhones');
+var btnMarkdown = document.getElementById('btnMarkdown');
 var btnScreenshot = document.getElementById('btnScreenshot');
 var btnHistory = document.getElementById('btnHistory');
 var btnCloseHist = document.getElementById('btnCloseHistory');
@@ -39,6 +40,18 @@ var socialChips = document.getElementById('socialChips');
 var headingsSection = document.getElementById('headingsSection');
 var headingsList = document.getElementById('headingsList');
 var headingsCount = document.getElementById('headingsCount');
+var techSection = document.getElementById('techSection');
+var techChips = document.getElementById('techChips');
+var mediaSection = document.getElementById('mediaSection');
+var mediaList = document.getElementById('mediaList');
+var mediaCount = document.getElementById('mediaCount');
+var fontsSection = document.getElementById('fontsSection');
+var fontChips = document.getElementById('fontChips');
+var colorsSection = document.getElementById('colorsSection');
+var colorSwatches = document.getElementById('colorSwatches');
+var tablesSection = document.getElementById('tablesSection');
+var tablesList = document.getElementById('tablesList');
+var tablesCount = document.getElementById('tablesCount');
 var historyOverlay = document.getElementById('historyOverlay');
 var historyList = document.getElementById('historyList');
 var historyEmpty = document.getElementById('historyEmpty');
@@ -47,10 +60,18 @@ var toastText = document.getElementById('toastText');
 
 var scrapedData = null;
 
+// All hideable sections
+var allSections = function() {
+  return [statsPanel,pageTitle,imagePreview,metaPreview,contactsSection,socialSection,
+    headingsSection,techSection,mediaSection,fontsSection,colorsSection,tablesSection];
+};
+
+// ── Helpers ──
 function setStatus(s, t) { statusChip.className = 'status-chip ' + s; statusText.textContent = t; }
 function showError(m) { errorText.textContent = m; errorMessage.classList.remove('hidden'); }
 function hideError() { errorMessage.classList.add('hidden'); }
 function fmt(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n); }
+function esc(s) { return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function showToast(msg) {
   toastText.textContent = msg;
@@ -68,9 +89,8 @@ function showStats(d) {
 }
 
 function toggleDownloads(on) {
-  [btnJSON, btnZIP, btnCopy, btnCSVImages, btnCSVLinks, btnScreenshot].forEach(function(b) { b.disabled = !on; });
+  [btnJSON, btnZIP, btnCopy, btnCSVImages, btnCSVLinks, btnScreenshot, btnMarkdown].forEach(function(b) { b.disabled = !on; });
   btnCSVEmails.disabled = !(on && scrapedData && scrapedData.emails && scrapedData.emails.length > 0);
-  btnCSVPhones.disabled = !(on && scrapedData && scrapedData.phones && scrapedData.phones.length > 0);
 }
 
 function setScraping(active) {
@@ -84,20 +104,19 @@ function showContacts(emails, phones) {
   var total = (emails ? emails.length : 0) + (phones ? phones.length : 0);
   if (total === 0) { contactsSection.classList.add('hidden'); return; }
   contactCount.textContent = total + ' found';
-  var max = 8;
-  (emails || []).slice(0, max).forEach(function(e) {
+  (emails || []).slice(0, 6).forEach(function(e) {
     var chip = document.createElement('div'); chip.className = 'contact-chip email';
     chip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>';
     var span = document.createElement('span'); span.textContent = e; chip.appendChild(span);
-    chip.title = e;
+    chip.title = 'Click to copy: ' + e;
     chip.addEventListener('click', function() { navigator.clipboard.writeText(e); showToast('Copied: ' + e); });
     contactsGrid.appendChild(chip);
   });
-  (phones || []).slice(0, max).forEach(function(p) {
+  (phones || []).slice(0, 6).forEach(function(p) {
     var chip = document.createElement('div'); chip.className = 'contact-chip phone';
     chip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>';
     var span = document.createElement('span'); span.textContent = p; chip.appendChild(span);
-    chip.title = p;
+    chip.title = 'Click to copy: ' + p;
     chip.addEventListener('click', function() { navigator.clipboard.writeText(p); showToast('Copied: ' + p); });
     contactsGrid.appendChild(chip);
   });
@@ -105,13 +124,13 @@ function showContacts(emails, phones) {
 }
 
 // ── Social Links ──
-var socialIcons = { twitter:'𝕏', facebook:'f', instagram:'📷', youtube:'▶', linkedin:'in', github:'⌨', tiktok:'♪', pinterest:'📌', reddit:'r', discord:'💬' };
+var socialIcons = { twitter:'\ud835\udd4f', facebook:'f', instagram:'\ud83d\udcf7', youtube:'\u25b6', linkedin:'in', github:'\u2328', tiktok:'\u266a', pinterest:'\ud83d\udccc', reddit:'r', discord:'\ud83d\udcac' };
 function showSocial(social) {
   socialChips.innerHTML = '';
   if (!social || Object.keys(social).length === 0) { socialSection.classList.add('hidden'); return; }
   Object.keys(social).forEach(function(platform) {
     var chip = document.createElement('div'); chip.className = 'social-chip';
-    var icon = document.createElement('span'); icon.className = 'social-icon'; icon.textContent = socialIcons[platform] || '🔗';
+    var icon = document.createElement('span'); icon.className = 'social-icon'; icon.textContent = socialIcons[platform] || '\ud83d\udd17';
     var name = document.createElement('span'); name.className = 'social-name'; name.textContent = platform;
     var count = document.createElement('span'); count.className = 'social-badge'; count.textContent = social[platform].length;
     chip.appendChild(icon); chip.appendChild(name); chip.appendChild(count);
@@ -125,20 +144,117 @@ function showHeadings(headings) {
   headingsList.innerHTML = '';
   if (!headings || headings.length === 0) { headingsSection.classList.add('hidden'); return; }
   headingsCount.textContent = headings.length + ' total';
-  var max = 15;
-  headings.slice(0, max).forEach(function(h) {
+  headings.slice(0, 15).forEach(function(h) {
     var row = document.createElement('div'); row.className = 'heading-row level-' + h.level;
     var badge = document.createElement('span'); badge.className = 'heading-badge'; badge.textContent = 'H' + h.level;
     var text = document.createElement('span'); text.className = 'heading-text'; text.textContent = h.text;
     row.appendChild(badge); row.appendChild(text);
     headingsList.appendChild(row);
   });
-  if (headings.length > max) {
+  if (headings.length > 15) {
     var more = document.createElement('div'); more.className = 'heading-row more';
-    more.textContent = '+' + (headings.length - max) + ' more';
+    more.textContent = '+' + (headings.length - 15) + ' more';
     headingsList.appendChild(more);
   }
   headingsSection.classList.remove('hidden');
+}
+
+// ── Technologies ──
+function showTech(techs) {
+  techChips.innerHTML = '';
+  if (!techs || techs.length === 0) { techSection.classList.add('hidden'); return; }
+  techs.forEach(function(t) {
+    var chip = document.createElement('span'); chip.className = 'tech-chip';
+    chip.textContent = t;
+    techChips.appendChild(chip);
+  });
+  techSection.classList.remove('hidden');
+}
+
+// ── Media (Videos/Audio) ──
+function showMedia(videos, audios) {
+  mediaList.innerHTML = '';
+  var vids = videos || [], auds = audios || [];
+  var total = vids.length + auds.length;
+  if (total === 0) { mediaSection.classList.add('hidden'); return; }
+  mediaCount.textContent = total + ' found';
+  vids.slice(0, 6).forEach(function(url) {
+    var row = document.createElement('div'); row.className = 'media-row';
+    row.innerHTML = '<span class="media-type-badge video">\u25b6 VID</span>';
+    var link = document.createElement('span'); link.className = 'media-url'; link.textContent = url; link.title = url;
+    row.appendChild(link);
+    row.addEventListener('click', function() { navigator.clipboard.writeText(url); showToast('Video URL copied'); });
+    mediaList.appendChild(row);
+  });
+  auds.slice(0, 4).forEach(function(url) {
+    var row = document.createElement('div'); row.className = 'media-row';
+    row.innerHTML = '<span class="media-type-badge audio">\u266a AUD</span>';
+    var link = document.createElement('span'); link.className = 'media-url'; link.textContent = url; link.title = url;
+    row.appendChild(link);
+    row.addEventListener('click', function() { navigator.clipboard.writeText(url); showToast('Audio URL copied'); });
+    mediaList.appendChild(row);
+  });
+  mediaSection.classList.remove('hidden');
+}
+
+// ── Fonts ──
+function showFonts(fonts) {
+  fontChips.innerHTML = '';
+  if (!fonts || fonts.length === 0) { fontsSection.classList.add('hidden'); return; }
+  fonts.slice(0, 12).forEach(function(f) {
+    var chip = document.createElement('span'); chip.className = 'font-chip';
+    chip.textContent = f;
+    chip.style.fontFamily = '"' + f + '", sans-serif';
+    chip.title = f;
+    chip.addEventListener('click', function() { navigator.clipboard.writeText(f); showToast('Copied: ' + f); });
+    fontChips.appendChild(chip);
+  });
+  fontsSection.classList.remove('hidden');
+}
+
+// ── Color Palette ──
+function showColors(colors) {
+  colorSwatches.innerHTML = '';
+  if (!colors || colors.length === 0) { colorsSection.classList.add('hidden'); return; }
+  colors.slice(0, 18).forEach(function(c) {
+    var swatch = document.createElement('div'); swatch.className = 'color-swatch';
+    swatch.style.background = c;
+    swatch.title = c;
+    swatch.addEventListener('click', function() { navigator.clipboard.writeText(c); showToast('Copied: ' + c); });
+    colorSwatches.appendChild(swatch);
+  });
+  colorsSection.classList.remove('hidden');
+}
+
+// ── Tables ──
+function showTables(tables) {
+  tablesList.innerHTML = '';
+  if (!tables || tables.length === 0) { tablesSection.classList.add('hidden'); return; }
+  tablesCount.textContent = tables.length + ' found';
+  tables.slice(0, 5).forEach(function(tbl, idx) {
+    var card = document.createElement('div'); card.className = 'table-card';
+    var header = document.createElement('div'); header.className = 'table-card-header';
+    header.textContent = 'Table ' + (idx + 1) + ' \u2014 ' + tbl.rowCount + ' rows' + (tbl.headers.length > 0 ? ', ' + tbl.headers.length + ' cols' : '');
+    card.appendChild(header);
+    if (tbl.headers.length > 0) {
+      var headerRow = document.createElement('div'); headerRow.className = 'table-card-cols';
+      headerRow.textContent = tbl.headers.join(' \u00b7 ');
+      card.appendChild(headerRow);
+    }
+    // Show first 2 rows preview
+    tbl.rows.slice(0, 2).forEach(function(row) {
+      var rowDiv = document.createElement('div'); rowDiv.className = 'table-card-row';
+      rowDiv.textContent = row.join(' | ');
+      card.appendChild(rowDiv);
+    });
+    if (tbl.rows.length > 2) {
+      var more = document.createElement('div'); more.className = 'table-card-more';
+      more.textContent = '+' + (tbl.rows.length - 2) + ' more rows';
+      card.appendChild(more);
+    }
+    tablesList.appendChild(card);
+  });
+  tablesSection.classList.remove('hidden');
 }
 
 // ── Image Preview ──
@@ -188,7 +304,7 @@ function renderHistory(h) {
   historyEmpty.style.display = 'none';
   h.forEach(function(e) {
     var item = document.createElement('div'); item.className = 'history-item';
-    item.innerHTML = '<div class="history-item-title">' + (e.title||'Untitled').replace(/</g,'&lt;') + '</div><div class="history-item-url">' + (e.url||'').replace(/</g,'&lt;') + '</div><div class="history-item-stats">' + e.images + ' imgs \u00B7 ' + e.links + ' links \u00B7 ' + fmt(e.textLength) + ' chars</div><div class="history-item-time">' + fmtTime(e.scrapedAt) + '</div>';
+    item.innerHTML = '<div class="history-item-title">' + esc(e.title||'Untitled') + '</div><div class="history-item-url">' + esc(e.url) + '</div><div class="history-item-stats">' + e.images + ' imgs \u00b7 ' + e.links + ' links \u00b7 ' + fmt(e.textLength) + ' chars</div><div class="history-item-time">' + fmtTime(e.scrapedAt) + '</div>';
     historyList.appendChild(item);
   });
 }
@@ -197,11 +313,59 @@ function fmtTime(iso) {
   if (m < 1) return 'Just now'; if (m < 60) return m+'m ago'; if (h < 24) return h+'h ago'; if (dy < 7) return dy+'d ago'; return d.toLocaleDateString();
 }
 
+// ── Markdown Generator ──
+function generateMarkdown(d) {
+  var md = '# ' + (d.title || 'Untitled Page') + '\n\n';
+  md += '**URL:** ' + d.url + '  \n';
+  md += '**Scraped:** ' + d.scrapedAt + '  \n';
+  md += '**Words:** ' + fmt(d.wordCount || 0) + ' | **Reading Time:** ~' + (d.readingTimeMin || 1) + ' min\n\n';
+  md += '---\n\n';
+  if (d.technologies && d.technologies.length > 0) {
+    md += '## Technologies\n\n' + d.technologies.map(function(t) { return '`' + t + '`'; }).join(' ') + '\n\n';
+  }
+  if (d.meta) {
+    md += '## Meta Tags\n\n';
+    if (d.meta.description) md += '- **Description:** ' + d.meta.description + '\n';
+    if (d.meta.keywords) md += '- **Keywords:** ' + d.meta.keywords + '\n';
+    if (d.meta.author) md += '- **Author:** ' + d.meta.author + '\n';
+    md += '\n';
+  }
+  if (d.headings && d.headings.length > 0) {
+    md += '## Headings Structure\n\n';
+    d.headings.forEach(function(h) { md += '  '.repeat(h.level - 1) + '- **H' + h.level + ':** ' + h.text + '\n'; });
+    md += '\n';
+  }
+  if (d.images && d.images.length > 0) {
+    md += '## Images (' + d.images.length + ')\n\n';
+    d.images.slice(0, 20).forEach(function(u, i) { md += (i + 1) + '. ' + u + '\n'; });
+    if (d.images.length > 20) md += '\n*...and ' + (d.images.length - 20) + ' more*\n';
+    md += '\n';
+  }
+  if (d.links && d.links.length > 0) {
+    md += '## Links (' + d.links.length + ')\n\n';
+    d.links.slice(0, 20).forEach(function(u, i) { md += (i + 1) + '. ' + u + '\n'; });
+    if (d.links.length > 20) md += '\n*...and ' + (d.links.length - 20) + ' more*\n';
+    md += '\n';
+  }
+  if (d.emails && d.emails.length > 0) {
+    md += '## Emails\n\n';
+    d.emails.forEach(function(e) { md += '- ' + e + '\n'; });
+    md += '\n';
+  }
+  if (d.fonts && d.fonts.length > 0) {
+    md += '## Fonts\n\n' + d.fonts.map(function(f) { return '`' + f + '`'; }).join(' ') + '\n\n';
+  }
+  if (d.text) {
+    md += '## Content\n\n' + d.text.substring(0, 5000) + '\n';
+  }
+  return md;
+}
+
 // ── EVENTS ──
 
 btnScrape.addEventListener('click', async function() {
   hideError(); setStatus('scraping','Scraping\u2026'); setScraping(true); toggleDownloads(false);
-  [statsPanel,pageTitle,imagePreview,metaPreview,contactsSection,socialSection,headingsSection].forEach(function(el) { el.classList.add('hidden'); });
+  allSections().forEach(function(el) { el.classList.add('hidden'); });
   try {
     var tabs = await chrome.tabs.query({active:true,currentWindow:true}); var tab = tabs[0];
     if (!tab||!tab.id) throw new Error('No active tab found.');
@@ -211,8 +375,17 @@ btnScrape.addEventListener('click', async function() {
     if (!r||!r.data) throw new Error('No data returned.');
     scrapedData = r.data;
     setStatus('done','Scrape complete');
-    showStats(scrapedData); showImagePreview(scrapedData.images); showMetaPreview(scrapedData.meta);
-    showContacts(scrapedData.emails, scrapedData.phones); showSocial(scrapedData.socialLinks); showHeadings(scrapedData.headings);
+    showStats(scrapedData);
+    showImagePreview(scrapedData.images);
+    showMetaPreview(scrapedData.meta);
+    showContacts(scrapedData.emails, scrapedData.phones);
+    showSocial(scrapedData.socialLinks);
+    showHeadings(scrapedData.headings);
+    showTech(scrapedData.technologies);
+    showMedia(scrapedData.videos, scrapedData.audios);
+    showFonts(scrapedData.fonts);
+    showColors(scrapedData.colors);
+    showTables(scrapedData.tables);
     toggleDownloads(true);
     chrome.runtime.sendMessage({action:'saveHistory',data:scrapedData});
   } catch(err) { console.error(err); setStatus('error','Something went wrong'); showError(err.message||'Unknown error'); } finally { setScraping(false); }
@@ -239,7 +412,13 @@ btnCopy.addEventListener('click', function() {
 btnCSVImages.addEventListener('click', function() { if (!scrapedData) return; chrome.runtime.sendMessage({action:'downloadCSV',data:scrapedData,csvType:'images'}); showToast('Images CSV started'); });
 btnCSVLinks.addEventListener('click', function() { if (!scrapedData) return; chrome.runtime.sendMessage({action:'downloadCSV',data:scrapedData,csvType:'links'}); showToast('Links CSV started'); });
 btnCSVEmails.addEventListener('click', function() { if (!scrapedData) return; chrome.runtime.sendMessage({action:'downloadCSV',data:scrapedData,csvType:'emails'}); showToast('Emails CSV started'); });
-btnCSVPhones.addEventListener('click', function() { if (!scrapedData) return; chrome.runtime.sendMessage({action:'downloadCSV',data:scrapedData,csvType:'phones'}); showToast('Phones CSV started'); });
+
+// Markdown export
+btnMarkdown.addEventListener('click', function() {
+  if (!scrapedData) return;
+  chrome.runtime.sendMessage({action:'downloadMarkdown',data:scrapedData});
+  showToast('Markdown download started');
+});
 
 // Screenshot
 btnScreenshot.addEventListener('click', function() {
