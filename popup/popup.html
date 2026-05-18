@@ -40,6 +40,10 @@
         <h1 class="title">OneClick Scraper</h1>
         <p class="subtitle">Extract &middot; Download &middot; Done</p>
       </div>
+      <!-- Theme toggle -->
+      <button id="btnTheme" class="btn-icon-only" title="Toggle Theme">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
       <!-- History toggle -->
       <button id="btnHistory" class="btn-icon-only" title="Scrape History">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -53,6 +57,13 @@
     <div id="statusChip" class="status-chip idle">
       <span id="statusDot" class="status-dot"></span>
       <span id="statusText" class="status-text">Ready to scrape</span>
+    </div>
+
+    <!-- Search Bar -->
+    <div id="searchBar" class="search-bar hidden">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" id="searchInput" class="search-input" placeholder="Filter scraped data..." autocomplete="off">
+      <span id="searchCount" class="search-count"></span>
     </div>
 
     <!-- Stats Panel -->
@@ -162,6 +173,23 @@
       <div class="tables-list" id="tablesList"></div>
     </div>
 
+    <!-- Page Performance -->
+    <div id="perfSection" class="perf-section hidden">
+      <div class="section-header">
+        <span class="section-title">Page Stats</span>
+      </div>
+      <div class="perf-grid" id="perfGrid"></div>
+    </div>
+
+    <!-- Structured Data (JSON-LD) -->
+    <div id="structuredSection" class="structured-section hidden">
+      <div class="section-header">
+        <span class="section-title">Structured Data</span>
+        <span class="section-count" id="structuredCount"></span>
+      </div>
+      <div class="structured-list" id="structuredList"></div>
+    </div>
+
     <!-- Meta Tags Preview -->
     <div id="metaPreview" class="meta-preview hidden">
       <div class="section-header">
@@ -233,7 +261,7 @@
     <footer class="footer">
       <div class="footer-line"></div>
       <div class="footer-content">
-        <span class="footer-badge">v1.3</span>
+        <span class="footer-badge">v1.4</span>
         <span class="footer-text">OneClick Scraper</span>
       </div>
     </footer>
