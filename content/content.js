@@ -340,7 +340,6 @@
   function extractColors() {
     var colors = new Set();
     var colorRegex = /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]+\)|hsla?\([^)]+\)/g;
-    // Scan CSS custom properties on :root
     try {
       var rootStyles = window.getComputedStyle(document.documentElement);
       var allProps = [];
@@ -357,7 +356,6 @@
         } catch(e) {}
       }
     } catch(e) {}
-    // Sample background-color and color from key elements
     var sampleEls = document.querySelectorAll('body, header, footer, nav, main, .hero, .banner, button, a');
     var checked = 0;
     sampleEls.forEach(function(el) {
@@ -372,6 +370,47 @@
       });
     });
     return Array.from(colors).slice(0, 24);
+  }
+
+  /** Page performance / DOM statistics */
+  function extractPagePerformance() {
+    var perf = {};
+    perf.domElements = document.querySelectorAll('*').length;
+    perf.scripts = document.querySelectorAll('script').length;
+    perf.stylesheets = document.querySelectorAll('link[rel="stylesheet"], style').length;
+    perf.iframes = document.querySelectorAll('iframe').length;
+    perf.forms = document.querySelectorAll('form').length;
+    perf.inputs = document.querySelectorAll('input, textarea, select').length;
+    perf.buttons = document.querySelectorAll('button, [role="button"], input[type="submit"]').length;
+    // Estimate HTML size
+    try { perf.htmlSizeKB = Math.round(document.documentElement.outerHTML.length / 1024); } catch(e) { perf.htmlSizeKB = 0; }
+    // Cookie count
+    try { perf.cookies = document.cookie ? document.cookie.split(';').filter(function(c) { return c.trim().length > 0; }).length : 0; } catch(e) { perf.cookies = 0; }
+    // Navigation timing
+    try {
+      if (window.performance && window.performance.timing) {
+        var t = window.performance.timing;
+        perf.loadTimeMs = t.loadEventEnd - t.navigationStart;
+        perf.domReadyMs = t.domContentLoadedEventEnd - t.navigationStart;
+      }
+    } catch(e) {}
+    return perf;
+  }
+
+  /** Extract JSON-LD structured data (Schema.org) */
+  function extractStructuredData() {
+    var results = [];
+    document.querySelectorAll('script[type="application/ld+json"]').forEach(function(script) {
+      try {
+        var data = JSON.parse(script.textContent);
+        if (Array.isArray(data)) {
+          data.forEach(function(item) { results.push(item); });
+        } else {
+          results.push(data);
+        }
+      } catch(e) { /* invalid JSON-LD */ }
+    });
+    return results.slice(0, 10); // Cap at 10
   }
 
   // ── Execute and return results ──
@@ -399,9 +438,10 @@
     fonts: extractFonts(),
     tables: extractTables(),
     colors: extractColors(),
+    performance: extractPagePerformance(),
+    structuredData: extractStructuredData(),
     scrapedAt: new Date().toISOString()
   };
 
   return result;
 })();
-
