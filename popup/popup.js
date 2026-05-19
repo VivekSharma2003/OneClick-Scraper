@@ -57,13 +57,23 @@ var historyList = document.getElementById('historyList');
 var historyEmpty = document.getElementById('historyEmpty');
 var toast = document.getElementById('toast');
 var toastText = document.getElementById('toastText');
+var btnTheme = document.getElementById('btnTheme');
+var themeIcon = document.getElementById('themeIcon');
+var searchBar = document.getElementById('searchBar');
+var searchInput = document.getElementById('searchInput');
+var searchCount = document.getElementById('searchCount');
+var perfSection = document.getElementById('perfSection');
+var perfGrid = document.getElementById('perfGrid');
+var structuredSection = document.getElementById('structuredSection');
+var structuredList = document.getElementById('structuredList');
+var structuredCount = document.getElementById('structuredCount');
 
 var scrapedData = null;
 
-// All hideable sections
 var allSections = function() {
   return [statsPanel,pageTitle,imagePreview,metaPreview,contactsSection,socialSection,
-    headingsSection,techSection,mediaSection,fontsSection,colorsSection,tablesSection];
+    headingsSection,techSection,mediaSection,fontsSection,colorsSection,tablesSection,
+    perfSection,structuredSection,searchBar];
 };
 
 // ── Helpers ──
@@ -361,11 +371,88 @@ function generateMarkdown(d) {
   return md;
 }
 
+// ── Performance Stats ──
+function showPerf(perf) {
+  perfGrid.innerHTML = '';
+  if (!perf) { perfSection.classList.add('hidden'); return; }
+  var items = [
+    {v:fmt(perf.domElements||0),l:'DOM Nodes'},
+    {v:perf.scripts||0,l:'Scripts'},
+    {v:perf.stylesheets||0,l:'Styles'},
+    {v:(perf.htmlSizeKB||0)+'K',l:'HTML Size'},
+    {v:perf.cookies||0,l:'Cookies'},
+    {v:perf.forms||0,l:'Forms'}
+  ];
+  items.forEach(function(it) {
+    var pill = document.createElement('div'); pill.className = 'perf-pill';
+    var v = document.createElement('span'); v.className = 'perf-val'; v.textContent = it.v;
+    var l = document.createElement('span'); l.className = 'perf-label'; l.textContent = it.l;
+    pill.appendChild(v); pill.appendChild(l); perfGrid.appendChild(pill);
+  });
+  perfSection.classList.remove('hidden');
+}
+
+// ── Structured Data (JSON-LD) ──
+function showStructuredData(data) {
+  structuredList.innerHTML = '';
+  if (!data || data.length === 0) { structuredSection.classList.add('hidden'); return; }
+  structuredCount.textContent = data.length + ' found';
+  data.slice(0, 5).forEach(function(item) {
+    var card = document.createElement('div'); card.className = 'structured-card';
+    var typeDiv = document.createElement('div'); typeDiv.className = 'structured-card-type';
+    var badge = document.createElement('span'); badge.className = 'structured-type-badge';
+    badge.textContent = item['@type'] || 'JSON-LD';
+    typeDiv.appendChild(badge);
+    if (item.name) { var n = document.createElement('span'); n.textContent = item.name; typeDiv.appendChild(n); }
+    card.appendChild(typeDiv);
+    var body = document.createElement('div'); body.className = 'structured-card-body';
+    body.textContent = JSON.stringify(item, null, 1).substring(0, 200);
+    card.appendChild(body);
+    card.addEventListener('click', function() { navigator.clipboard.writeText(JSON.stringify(item,null,2)); showToast('JSON-LD copied'); });
+    structuredList.appendChild(card);
+  });
+  structuredSection.classList.remove('hidden');
+}
+
+// ── Search / Filter ──
+function handleSearch() {
+  var q = searchInput.value.trim().toLowerCase();
+  if (!q || !scrapedData) { searchCount.textContent = ''; document.querySelectorAll('.search-hidden').forEach(function(el) { el.classList.remove('search-hidden'); }); return; }
+  var total = 0;
+  // Filter contact chips, heading rows, media rows, tech chips, font chips, meta tags, table cards, structured cards
+  var selectors = '.contact-chip, .heading-row:not(.more), .media-row, .tech-chip, .font-chip, .meta-tag, .table-card, .structured-card, .social-chip';
+  document.querySelectorAll(selectors).forEach(function(el) {
+    var text = (el.textContent || '').toLowerCase();
+    if (text.indexOf(q) >= 0) { el.classList.remove('search-hidden'); total++; }
+    else { el.classList.add('search-hidden'); }
+  });
+  searchCount.textContent = total + ' matches';
+}
+
+// ── Theme Toggle ──
+function loadTheme() {
+  chrome.storage.local.get({theme:'dark'}, function(r) {
+    if (r.theme === 'light') { document.body.classList.add('light'); updateThemeIcon(true); }
+  });
+}
+function toggleTheme() {
+  var isLight = document.body.classList.toggle('light');
+  chrome.storage.local.set({theme: isLight ? 'light' : 'dark'});
+  updateThemeIcon(isLight);
+}
+function updateThemeIcon(isLight) {
+  themeIcon.innerHTML = isLight
+    ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+    : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+}
+loadTheme();
+
 // ── EVENTS ──
 
 btnScrape.addEventListener('click', async function() {
   hideError(); setStatus('scraping','Scraping\u2026'); setScraping(true); toggleDownloads(false);
   allSections().forEach(function(el) { el.classList.add('hidden'); });
+  searchInput.value = '';
   try {
     var tabs = await chrome.tabs.query({active:true,currentWindow:true}); var tab = tabs[0];
     if (!tab||!tab.id) throw new Error('No active tab found.');
@@ -386,6 +473,9 @@ btnScrape.addEventListener('click', async function() {
     showFonts(scrapedData.fonts);
     showColors(scrapedData.colors);
     showTables(scrapedData.tables);
+    showPerf(scrapedData.performance);
+    showStructuredData(scrapedData.structuredData);
+    searchBar.classList.remove('hidden');
     toggleDownloads(true);
     chrome.runtime.sendMessage({action:'saveHistory',data:scrapedData});
   } catch(err) { console.error(err); setStatus('error','Something went wrong'); showError(err.message||'Unknown error'); } finally { setScraping(false); }
@@ -412,20 +502,19 @@ btnCopy.addEventListener('click', function() {
 btnCSVImages.addEventListener('click', function() { if (!scrapedData) return; chrome.runtime.sendMessage({action:'downloadCSV',data:scrapedData,csvType:'images'}); showToast('Images CSV started'); });
 btnCSVLinks.addEventListener('click', function() { if (!scrapedData) return; chrome.runtime.sendMessage({action:'downloadCSV',data:scrapedData,csvType:'links'}); showToast('Links CSV started'); });
 btnCSVEmails.addEventListener('click', function() { if (!scrapedData) return; chrome.runtime.sendMessage({action:'downloadCSV',data:scrapedData,csvType:'emails'}); showToast('Emails CSV started'); });
+btnMarkdown.addEventListener('click', function() { if (!scrapedData) return; chrome.runtime.sendMessage({action:'downloadMarkdown',data:scrapedData}); showToast('Markdown download started'); });
+btnScreenshot.addEventListener('click', function() { if (!scrapedData) return; chrome.runtime.sendMessage({action:'screenshot'}, function(r) { if (r&&r.error) { showError(r.error); } else { showToast('Screenshot saved'); } }); });
+btnTheme.addEventListener('click', toggleTheme);
+searchInput.addEventListener('input', handleSearch);
 
-// Markdown export
-btnMarkdown.addEventListener('click', function() {
-  if (!scrapedData) return;
-  chrome.runtime.sendMessage({action:'downloadMarkdown',data:scrapedData});
-  showToast('Markdown download started');
-});
-
-// Screenshot
-btnScreenshot.addEventListener('click', function() {
-  if (!scrapedData) return;
-  chrome.runtime.sendMessage({action:'screenshot'}, function(r) {
-    if (r&&r.error) { showError(r.error); } else { showToast('Screenshot saved'); }
-  });
+// ── Keyboard Shortcuts ──
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'Enter') { e.preventDefault(); btnScrape.click(); }
+    else if (e.key === 'j') { e.preventDefault(); btnJSON.click(); }
+    else if (e.key === 'k') { e.preventDefault(); btnCopy.click(); }
+    else if (e.key === 'f') { e.preventDefault(); searchInput.focus(); }
+  }
 });
 
 btnHistory.addEventListener('click', openHistory);
