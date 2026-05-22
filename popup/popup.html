@@ -190,6 +190,45 @@
       <div class="structured-list" id="structuredList"></div>
     </div>
 
+    <!-- SEO Score -->
+    <div id="seoSection" class="seo-section hidden">
+      <div class="section-header">
+        <span class="section-title">SEO Score</span>
+        <span class="section-count" id="seoScoreLabel"></span>
+      </div>
+      <div class="seo-ring-wrap">
+        <canvas id="seoRing" width="80" height="80"></canvas>
+        <span class="seo-ring-score" id="seoRingScore"></span>
+      </div>
+      <div class="seo-checks" id="seoChecks"></div>
+    </div>
+
+    <!-- Link Analysis -->
+    <div id="linkAnalysisSection" class="link-analysis-section hidden">
+      <div class="section-header">
+        <span class="section-title">Link Analysis</span>
+      </div>
+      <div class="link-analysis-grid" id="linkAnalysisGrid"></div>
+      <div class="link-domains" id="linkDomains"></div>
+    </div>
+
+    <!-- Accessibility Audit -->
+    <div id="a11ySection" class="a11y-section hidden">
+      <div class="section-header">
+        <span class="section-title">Accessibility</span>
+        <span class="section-count" id="a11yScoreLabel"></span>
+      </div>
+      <div class="a11y-grid" id="a11yGrid"></div>
+    </div>
+
+    <!-- Page Dates -->
+    <div id="datesSection" class="dates-section hidden">
+      <div class="section-header">
+        <span class="section-title">Page Dates</span>
+      </div>
+      <div class="dates-grid" id="datesGrid"></div>
+    </div>
+
     <!-- Meta Tags Preview -->
     <div id="metaPreview" class="meta-preview hidden">
       <div class="section-header">
@@ -257,11 +296,20 @@
       </div>
     </div>
 
+    <!-- Quick Notes -->
+    <div id="notesSection" class="notes-section hidden">
+      <div class="section-header">
+        <span class="section-title">Quick Notes</span>
+        <button id="btnSaveNotes" class="notes-save-btn">Save</button>
+      </div>
+      <textarea id="notesInput" class="notes-input" placeholder="Add notes about this page..." rows="3"></textarea>
+    </div>
+
     <!-- Footer -->
     <footer class="footer">
       <div class="footer-line"></div>
       <div class="footer-content">
-        <span class="footer-badge">v1.4</span>
+        <span class="footer-badge">v1.5</span>
         <span class="footer-text">OneClick Scraper</span>
       </div>
     </footer>
