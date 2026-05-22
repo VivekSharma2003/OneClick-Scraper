@@ -413,22 +413,121 @@
     return results.slice(0, 10); // Cap at 10
   }
 
+  /** SEO Score — quick automated audit */
+  function computeSeoScore(title, meta, headings, images) {
+    var checks = [];
+    // Title
+    var tLen = (title || '').length;
+    checks.push({name:'Title exists', pass: tLen > 0, tip: tLen > 0 ? tLen + ' chars' : 'Missing'});
+    checks.push({name:'Title length', pass: tLen >= 30 && tLen <= 65, tip: tLen + '/65 chars'});
+    // Meta description
+    var desc = meta && meta.description ? meta.description : '';
+    checks.push({name:'Meta description', pass: desc.length > 0, tip: desc.length > 0 ? desc.length + ' chars' : 'Missing'});
+    checks.push({name:'Desc length', pass: desc.length >= 70 && desc.length <= 160, tip: desc.length + '/160 chars'});
+    // H1
+    var h1s = headings.filter(function(h) { return h.level === 1; });
+    checks.push({name:'H1 tag', pass: h1s.length === 1, tip: h1s.length + ' found'});
+    // Image alt tags
+    var allImgs = document.querySelectorAll('img');
+    var missingAlt = 0;
+    allImgs.forEach(function(img) { if (!img.getAttribute('alt')) missingAlt++; });
+    checks.push({name:'Image alt tags', pass: missingAlt === 0, tip: missingAlt > 0 ? missingAlt + ' missing' : 'All set'});
+    // Canonical
+    checks.push({name:'Canonical URL', pass: !!(meta && meta.canonical), tip: meta && meta.canonical ? 'Set' : 'Missing'});
+    // HTTPS
+    checks.push({name:'HTTPS', pass: window.location.protocol === 'https:', tip: window.location.protocol});
+    // Language
+    checks.push({name:'Lang attribute', pass: !!document.documentElement.getAttribute('lang'), tip: document.documentElement.getAttribute('lang') || 'Missing'});
+    // Viewport
+    var viewport = document.querySelector('meta[name="viewport"]');
+    checks.push({name:'Viewport meta', pass: !!viewport, tip: viewport ? 'Set' : 'Missing'});
+    var passed = checks.filter(function(c) { return c.pass; }).length;
+    var score = Math.round((passed / checks.length) * 100);
+    return {score: score, total: checks.length, passed: passed, checks: checks};
+  }
+
+  /** Link analysis — internal vs external, nofollow */
+  function analyzeLinkTypes(links) {
+    var host = window.location.hostname;
+    var internal = 0, external = 0, nofollow = 0;
+    var externalDomains = {};
+    document.querySelectorAll('a[href]').forEach(function(a) {
+      try {
+        var href = a.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+        var url = new URL(href, document.baseURI);
+        if (url.hostname === host) { internal++; }
+        else { external++; var d = url.hostname; externalDomains[d] = (externalDomains[d]||0) + 1; }
+        var rel = (a.getAttribute('rel') || '').toLowerCase();
+        if (rel.indexOf('nofollow') >= 0) nofollow++;
+      } catch(e) {}
+    });
+    // Top 5 external domains
+    var topDomains = Object.keys(externalDomains).sort(function(a,b) { return externalDomains[b] - externalDomains[a]; }).slice(0,5).map(function(d) { return {domain:d, count:externalDomains[d]}; });
+    return {internal: internal, external: external, nofollow: nofollow, topDomains: topDomains};
+  }
+
+  /** Accessibility quick audit */
+  function runAccessibilityAudit() {
+    var audit = {};
+    var imgs = document.querySelectorAll('img');
+    var missingAlt = 0; imgs.forEach(function(i) { if (!i.getAttribute('alt')) missingAlt++; });
+    audit.totalImages = imgs.length;
+    audit.missingAlt = missingAlt;
+    audit.ariaLabels = document.querySelectorAll('[aria-label]').length;
+    audit.ariaRoles = document.querySelectorAll('[role]').length;
+    audit.hasLang = !!document.documentElement.getAttribute('lang');
+    audit.hasSkipLink = !!document.querySelector('a[href="#main"], a[href="#content"], .skip-link, .skip-to-content');
+    audit.tabIndex = document.querySelectorAll('[tabindex]').length;
+    var score = 0, total = 5;
+    if (audit.missingAlt === 0 && audit.totalImages > 0) score++;
+    if (audit.hasLang) score++;
+    if (audit.ariaRoles > 0) score++;
+    if (audit.hasSkipLink) score++;
+    if (audit.ariaLabels > 0) score++;
+    audit.score = Math.round((score / total) * 100);
+    return audit;
+  }
+
+  /** Detect page dates from meta tags */
+  function extractPageDates() {
+    var dates = {};
+    var selectors = [
+      {key:'published', sel:'meta[property="article:published_time"], meta[name="date"], meta[name="DC.date.issued"], meta[itemprop="datePublished"]'},
+      {key:'modified', sel:'meta[property="article:modified_time"], meta[name="last-modified"], meta[http-equiv="last-modified"], meta[itemprop="dateModified"]'},
+      {key:'created', sel:'meta[name="DC.date.created"]'}
+    ];
+    selectors.forEach(function(s) {
+      var el = document.querySelector(s.sel);
+      if (el) { var v = el.getAttribute('content') || el.getAttribute('datetime'); if (v) dates[s.key] = v; }
+    });
+    // Check <time> elements
+    if (!dates.published) {
+      var timeEl = document.querySelector('time[datetime]');
+      if (timeEl) dates.published = timeEl.getAttribute('datetime');
+    }
+    return Object.keys(dates).length > 0 ? dates : null;
+  }
+
   // ── Execute and return results ──
   var text = extractText();
   var links = extractLinks();
+  var images = extractImages();
+  var headings = extractHeadings();
   var readingStats = computeReadingStats(text);
   var media = extractMedia();
+  var metaData = extractMeta();
 
   var result = {
     url: window.location.href,
     title: document.title || '',
-    images: extractImages(),
+    images: images,
     links: links,
     text: text,
-    meta: extractMeta(),
+    meta: metaData,
     emails: extractEmails(),
     phones: extractPhones(),
-    headings: extractHeadings(),
+    headings: headings,
     socialLinks: extractSocialLinks(links),
     wordCount: readingStats.wordCount,
     readingTimeMin: readingStats.readingTimeMin,
@@ -440,6 +539,10 @@
     colors: extractColors(),
     performance: extractPagePerformance(),
     structuredData: extractStructuredData(),
+    seoScore: computeSeoScore(document.title, metaData, headings, images),
+    linkAnalysis: analyzeLinkTypes(links),
+    accessibility: runAccessibilityAudit(),
+    pageDates: extractPageDates(),
     scrapedAt: new Date().toISOString()
   };
 
