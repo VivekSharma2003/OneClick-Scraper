@@ -67,13 +67,30 @@ var perfGrid = document.getElementById('perfGrid');
 var structuredSection = document.getElementById('structuredSection');
 var structuredList = document.getElementById('structuredList');
 var structuredCount = document.getElementById('structuredCount');
+var seoSection = document.getElementById('seoSection');
+var seoScoreLabel = document.getElementById('seoScoreLabel');
+var seoRing = document.getElementById('seoRing');
+var seoRingScore = document.getElementById('seoRingScore');
+var seoChecks = document.getElementById('seoChecks');
+var linkAnalysisSection = document.getElementById('linkAnalysisSection');
+var linkAnalysisGrid = document.getElementById('linkAnalysisGrid');
+var linkDomains = document.getElementById('linkDomains');
+var a11ySection = document.getElementById('a11ySection');
+var a11yScoreLabel = document.getElementById('a11yScoreLabel');
+var a11yGrid = document.getElementById('a11yGrid');
+var datesSection = document.getElementById('datesSection');
+var datesGrid = document.getElementById('datesGrid');
+var notesSection = document.getElementById('notesSection');
+var notesInput = document.getElementById('notesInput');
+var btnSaveNotes = document.getElementById('btnSaveNotes');
 
 var scrapedData = null;
 
 var allSections = function() {
   return [statsPanel,pageTitle,imagePreview,metaPreview,contactsSection,socialSection,
     headingsSection,techSection,mediaSection,fontsSection,colorsSection,tablesSection,
-    perfSection,structuredSection,searchBar];
+    perfSection,structuredSection,searchBar,seoSection,linkAnalysisSection,a11ySection,
+    datesSection,notesSection];
 };
 
 // ── Helpers ──
@@ -429,6 +446,99 @@ function handleSearch() {
   searchCount.textContent = total + ' matches';
 }
 
+// ── SEO Score ──
+function showSeoScore(seo) {
+  seoChecks.innerHTML = '';
+  if (!seo) { seoSection.classList.add('hidden'); return; }
+  seoScoreLabel.textContent = seo.passed + '/' + seo.total + ' passed';
+  seoRingScore.textContent = seo.score + '%';
+  // Draw ring
+  var ctx = seoRing.getContext('2d');
+  var w = 80, cx = w/2, cy = w/2, r = 32, lw = 6;
+  ctx.clearRect(0,0,w,w);
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = lw; ctx.stroke();
+  var angle = (seo.score / 100) * Math.PI * 2;
+  var color = seo.score >= 80 ? '#4caf50' : seo.score >= 50 ? '#ff9800' : '#ff5252';
+  ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+angle); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.stroke();
+  seo.checks.forEach(function(c) {
+    var row = document.createElement('div'); row.className = 'seo-check';
+    var dot = document.createElement('span'); dot.className = 'seo-dot ' + (c.pass ? 'pass' : 'fail');
+    var name = document.createElement('span'); name.className = 'seo-check-name'; name.textContent = c.name;
+    var tip = document.createElement('span'); tip.className = 'seo-check-tip'; tip.textContent = c.tip;
+    row.appendChild(dot); row.appendChild(name); row.appendChild(tip);
+    seoChecks.appendChild(row);
+  });
+  seoSection.classList.remove('hidden');
+}
+
+// ── Link Analysis ──
+function showLinkAnalysis(la) {
+  linkAnalysisGrid.innerHTML = ''; linkDomains.innerHTML = '';
+  if (!la) { linkAnalysisSection.classList.add('hidden'); return; }
+  [{v:la.internal,l:'Internal'},{v:la.external,l:'External'},{v:la.nofollow,l:'Nofollow'}].forEach(function(it) {
+    var pill = document.createElement('div'); pill.className = 'link-stat';
+    var v = document.createElement('span'); v.className = 'link-stat-val'; v.textContent = it.v;
+    var l = document.createElement('span'); l.className = 'link-stat-label'; l.textContent = it.l;
+    pill.appendChild(v); pill.appendChild(l); linkAnalysisGrid.appendChild(pill);
+  });
+  if (la.topDomains && la.topDomains.length > 0) {
+    la.topDomains.forEach(function(d) {
+      var row = document.createElement('div'); row.className = 'link-domain-row';
+      var name = document.createElement('span'); name.className = 'link-domain-name'; name.textContent = d.domain;
+      var count = document.createElement('span'); count.className = 'link-domain-count'; count.textContent = d.count;
+      row.appendChild(name); row.appendChild(count); linkDomains.appendChild(row);
+    });
+  }
+  linkAnalysisSection.classList.remove('hidden');
+}
+
+// ── Accessibility Audit ──
+function showAccessibility(a) {
+  a11yGrid.innerHTML = '';
+  if (!a) { a11ySection.classList.add('hidden'); return; }
+  a11yScoreLabel.textContent = a.score + '%';
+  var items = [
+    {v:a.missingAlt,l:'Missing Alt',warn:a.missingAlt>0},
+    {v:a.ariaLabels,l:'ARIA Labels',warn:false},
+    {v:a.ariaRoles,l:'ARIA Roles',warn:false},
+    {v:a.hasLang?'\u2713':'\u2717',l:'Lang Attr',warn:!a.hasLang},
+    {v:a.hasSkipLink?'\u2713':'\u2717',l:'Skip Link',warn:!a.hasSkipLink},
+    {v:a.tabIndex,l:'Tab Index',warn:false}
+  ];
+  items.forEach(function(it) {
+    var pill = document.createElement('div'); pill.className = 'a11y-pill' + (it.warn ? ' warn' : ' good');
+    var v = document.createElement('span'); v.className = 'a11y-val'; v.textContent = it.v;
+    var l = document.createElement('span'); l.className = 'a11y-label'; l.textContent = it.l;
+    pill.appendChild(v); pill.appendChild(l); a11yGrid.appendChild(pill);
+  });
+  a11ySection.classList.remove('hidden');
+}
+
+// ── Page Dates ──
+function showPageDates(dates) {
+  datesGrid.innerHTML = '';
+  if (!dates) { datesSection.classList.add('hidden'); return; }
+  Object.keys(dates).forEach(function(key) {
+    var row = document.createElement('div'); row.className = 'date-row';
+    var k = document.createElement('span'); k.className = 'date-key'; k.textContent = key;
+    var v = document.createElement('span'); v.className = 'date-val';
+    try { v.textContent = new Date(dates[key]).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+    catch(e) { v.textContent = dates[key]; }
+    row.appendChild(k); row.appendChild(v);
+    row.addEventListener('click', function() { navigator.clipboard.writeText(dates[key]); showToast('Date copied'); });
+    datesGrid.appendChild(row);
+  });
+  datesSection.classList.remove('hidden');
+}
+
+// ── Quick Notes ──
+function loadNotes(url) {
+  var key = 'notes_' + btoa(url).substring(0, 40);
+  chrome.storage.local.get(key, function(r) {
+    notesInput.value = r[key] || '';
+  });
+}
+
 // ── Theme Toggle ──
 function loadTheme() {
   chrome.storage.local.get({theme:'dark'}, function(r) {
@@ -475,6 +585,12 @@ btnScrape.addEventListener('click', async function() {
     showTables(scrapedData.tables);
     showPerf(scrapedData.performance);
     showStructuredData(scrapedData.structuredData);
+    showSeoScore(scrapedData.seoScore);
+    showLinkAnalysis(scrapedData.linkAnalysis);
+    showAccessibility(scrapedData.accessibility);
+    showPageDates(scrapedData.pageDates);
+    notesSection.classList.remove('hidden');
+    loadNotes(scrapedData.url);
     searchBar.classList.remove('hidden');
     toggleDownloads(true);
     chrome.runtime.sendMessage({action:'saveHistory',data:scrapedData});
@@ -506,6 +622,12 @@ btnMarkdown.addEventListener('click', function() { if (!scrapedData) return; chr
 btnScreenshot.addEventListener('click', function() { if (!scrapedData) return; chrome.runtime.sendMessage({action:'screenshot'}, function(r) { if (r&&r.error) { showError(r.error); } else { showToast('Screenshot saved'); } }); });
 btnTheme.addEventListener('click', toggleTheme);
 searchInput.addEventListener('input', handleSearch);
+btnSaveNotes.addEventListener('click', function() {
+  if (!scrapedData) return;
+  var key = 'notes_' + btoa(scrapedData.url).substring(0, 40);
+  var obj = {}; obj[key] = notesInput.value;
+  chrome.storage.local.set(obj, function() { showToast('Notes saved'); });
+});
 
 // ── Keyboard Shortcuts ──
 document.addEventListener('keydown', function(e) {
